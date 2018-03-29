@@ -86,7 +86,7 @@ prettyStmt stmt =
 
 vars : Int -> Dict Int String
 vars n =
-    Dict.fromList (List.map (\i -> ( i, "p0(\"" ++ toString i ++ "\", g)" )) (List.range 1 n))
+    Dict.fromList (List.map (\i -> ( i, "PI(g, \"" ++ toString i ++ "\")" )) (List.range 0 (n - 1)))
 
 
 stmt : QOBDD -> ( List Stmt, String )
@@ -144,20 +144,33 @@ stmtTree vars =
     QOBDD.foldBDD ( [], Num 0, [] ) ( [], Num 1, [] ) ref node
 
 stmtAlphaWin : QOBDD -> ( List Stmt, String )
-stmtAlphaWin qobdd =
-    let
-        actors = List.range 1 qobdd.vars
+stmtAlphaWin qobdd = stmtAlpha stmtTreeAlphaWin qobdd
+
+stmtAlphaLose : QOBDD -> ( List Stmt, String )
+stmtAlphaLose qobdd = stmtAlpha stmtTreeAlphaLose qobdd
+
+
+stmtAlpha : (Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )) -> QOBDD -> ( List Stmt, String )
+stmtAlpha f qobdd =
+     let
+        -- List Int
+        actors = List.range 0 (qobdd.vars - 1)
+        -- Dict Int String
         varList = vars qobdd.vars
-        result = List.map (\i -> stmtTreeAlphaWin varList i qobdd.bdd) actors
-        out = List.map (\stmts -> \v -> \vs -> ( stmts ++ [ "%1" := v ], setVars vs )) result
-    in
-    ( out )
+        -- List ( List Stmt, Exp, List Int )
+        -- list of tuples, with each tuple containing a list of stmts, an exp, and a list of Ints
+        result = List.map (\i -> f varList i qobdd.bdd) actors
+        mergeTrees : ( List Stmt, Exp, List Int ) -> ( List Stmt, String ) -> ( List Stmt, String )
+        mergeTrees (stmts, v, vs) (merged_smts, merged_vars) = (merged_smts ++ stmts ++ [ "%1" := v ], merged_vars)
+     in
+     ( List.foldl mergeTrees ([], "") result )
+
 
 stmtTreeAlphaWin : Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )
 stmtTreeAlphaWin vars checkIdent =
     let
         term i =
-            "talpha_win(\"" ++ toString checkIdent ++ "\", g, \"" ++ toString i ++ "\")"
+            "alphawin_t(g, \"" ++ toString checkIdent ++ "\", \"" ++ toString i ++ "\")"
 
         ident i =
             case Dict.get i vars of
@@ -169,16 +182,53 @@ stmtTreeAlphaWin vars checkIdent =
 
         ref i =
             ( [], Var (term i), [] )
-
+        check = Var (ident checkIdent)
         node i ( s1, v1, vars1 ) label ( s2, v2, vars2 ) =
             let
-                check = ident checkIdent
                 player label v2 =
-                    case (Var (ident label)) of
-                        Var check -> Num 0
-                        x -> (mult (minus (Num 1) x) v2)
+                    let
+                        playerVar = Var (ident label)
+                    in
+                    if check == playerVar then
+                        Num 0
+                    else
+                        (mult (minus (Num 1) playerVar) v2)
                 assignment =
                     term i := add (mult (Var (ident label)) v1) (player label v2)
+            in
+            ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
+    in
+    QOBDD.foldBDD ( [], Num 0, [] ) ( [], Num 1, [] ) ref node
+
+stmtTreeAlphaLose : Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )
+stmtTreeAlphaLose vars checkIdent =
+    let
+        term i =
+            "alphalose_t(g, \"" ++ toString checkIdent ++ "\", \"" ++ toString i ++ "\")"
+
+        ident i =
+            case Dict.get i vars of
+                Nothing ->
+                    Debug.crash ("Error: " ++ toString i ++ " not found in " ++ toString vars)
+
+                Just v ->
+                    v
+
+        ref i =
+            ( [], Var (term i), [] )
+        check = Var (ident checkIdent)
+        node i ( s1, v1, vars1 ) label ( s2, v2, vars2 ) =
+            let
+                player label v1 =
+                    let
+                        playerVar = Var (ident label)
+                    in
+                    if check == playerVar then
+                        Num 0
+                    else
+                        (mult (Var (ident label)) v1)
+                assignment =
+                    term i := add (player label v1) (mult (minus (Num 1) (Var (ident label))) v2)
             in
             ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
     in

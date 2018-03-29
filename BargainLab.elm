@@ -118,6 +118,12 @@ view model =
             , text " to calculate the probability of a proposal to be accepted."
             ]
         , viewFormula model
+        , p []
+            [ text "* alphawin code" ]
+        , viewAlphaWin model
+        , p []
+            [ text "* alphalose code" ]
+        , viewAlphaLose model
         ]
 
 
@@ -150,6 +156,25 @@ viewFormula model =
     in
     div []
         [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmt <| o) model.qobdd)) ] ]
+
+
+viewAlphaWin : Model -> Html Msg
+viewAlphaWin model =
+    let
+        resultToString ( stmts, vs ) =
+            vs ++ "\n\n" ++ GAMS.prettyStmts stmts
+    in
+    div []
+        [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaWin <| o) model.qobdd)) ] ]
+
+viewAlphaLose : Model -> Html Msg
+viewAlphaLose model =
+    let
+        resultToString ( stmts, vs ) =
+            vs ++ "\n\n" ++ GAMS.prettyStmts stmts
+    in
+    div []
+        [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaLose <| o) model.qobdd)) ] ]
 
 
 viewProbs : List (List Float) -> Html Msg
