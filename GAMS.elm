@@ -53,6 +53,12 @@ prettyExp exp =
         Var string ->
             string
 
+        BinOp Add (Num i) (Num k) -> toString (i + k)
+        BinOp Add (Num 0) exp -> prettyExp exp
+        BinOp Add exp (Num 0) -> prettyExp exp
+        BinOp Minus (Num i) (Num k) -> toString (i - k)
+        BinOp Mult (Num 0) exp2 -> "0"
+        BinOp Mult exp (Num 0) -> "0"
         BinOp op exp exp2 ->
             "(" ++ prettyExp exp ++ " " ++ prettyOp op ++ " " ++ prettyExp exp2 ++ ")"
 
@@ -80,7 +86,7 @@ prettyStmt stmt =
 
 vars : Int -> Dict Int String
 vars n =
-    Dict.fromList (List.map (\i -> ( i, "p0(\"" ++ toString i ++ "\", g)" )) (List.range 0 (n - 1)))
+    Dict.fromList (List.map (\i -> ( i, "p0(\"" ++ toString i ++ "\", g)" )) (List.range 1 n))
 
 
 stmt : QOBDD -> ( List Stmt, String )
@@ -125,8 +131,54 @@ stmtTree vars =
 
         node i ( s1, v1, vars1 ) label ( s2, v2, vars2 ) =
             let
+                check = ident 1
+                player label v2 =
+                    case (Var (ident label)) of
+                        Var check -> Num 0
+                        x -> (mult (minus (Num 1) x) v2)
                 assignment =
                     term i := add (mult (Var (ident label)) v1) (mult (minus (Num 1) (Var (ident label))) v2)
+            in
+            ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
+    in
+    QOBDD.foldBDD ( [], Num 0, [] ) ( [], Num 1, [] ) ref node
+
+stmtAlphaWin : QOBDD -> ( List Stmt, String )
+stmtAlphaWin qobdd =
+    let
+        actors = List.range 1 qobdd.vars
+        varList = vars qobdd.vars
+        result = List.map (\i -> stmtTreeAlphaWin varList i qobdd.bdd) actors
+        out = List.map (\stmts -> \v -> \vs -> ( stmts ++ [ "%1" := v ], setVars vs )) result
+    in
+    ( out )
+
+stmtTreeAlphaWin : Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )
+stmtTreeAlphaWin vars checkIdent =
+    let
+        term i =
+            "talpha_win(\"" ++ toString checkIdent ++ "\", g, \"" ++ toString i ++ "\")"
+
+        ident i =
+            case Dict.get i vars of
+                Nothing ->
+                    Debug.crash ("Error: " ++ toString i ++ " not found in " ++ toString vars)
+
+                Just v ->
+                    v
+
+        ref i =
+            ( [], Var (term i), [] )
+
+        node i ( s1, v1, vars1 ) label ( s2, v2, vars2 ) =
+            let
+                check = ident checkIdent
+                player label v2 =
+                    case (Var (ident label)) of
+                        Var check -> Num 0
+                        x -> (mult (minus (Num 1) x) v2)
+                assignment =
+                    term i := add (mult (Var (ident label)) v1) (player label v2)
             in
             ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
     in
