@@ -14,7 +14,7 @@ import QOBDD exposing (BDD, QOBDD, parseMWVG, parsedMWVG, size)
 import Random exposing (Generator)
 import Vector exposing (toList)
 
-
+import Http exposing (encodeUri)
 -- split Model
 
 
@@ -117,6 +117,7 @@ view model =
             , a [ href "https://www.gams.com" ] [ text "GAMS" ]
             , text " to calculate the probability of a proposal to be accepted."
             ]
+        --, viewDownload model
         , viewFormula model
         , p []
             [ text "* alphawin code" ]
@@ -146,6 +147,30 @@ viewCoalisions model =
 
 -- viewBanzhaf : Model -> Html Msg
 -- viewBanzhaf
+
+
+viewDownload : Model -> Html Msg
+viewDownload model =
+    div []
+    [ a
+        [ type_ "button"
+        , href <| "data:text/plain;charset=utf-8," ++ encodeUri (viewFormulaStr model)
+        , downloadAs "raw_gams.txt"
+        ]
+        [ button [] [ text "Download" ] ]
+    ]
+
+
+
+viewFormulaStr : Model -> String
+viewFormulaStr model =
+    let
+        resultToString ( stmts, vs ) =
+            vs ++ "\n\n" ++ GAMS.prettyStmts stmts
+        modelToString f qobdd =
+            Maybe.withDefault "error ahhhahahsdjhasjd" ( (Maybe.map (\o -> resultToString <| f <| o) qobdd) )
+    in
+    modelToString GAMS.stmt model.qobdd ++ modelToString GAMS.stmtAlphaWin model.qobdd ++ modelToString GAMS.stmtAlphaLose model.qobdd
 
 
 viewFormula : Model -> Html Msg
