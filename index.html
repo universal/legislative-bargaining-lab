@@ -6,8 +6,9 @@
 <script type="text/javascript" src="js/Config.js"></script>
 <script type="text/javascript" src="js/Helper.js"></script>
 <script type="text/javascript" src="js/Metric.js"></script>
+
 <script type="text/javascript">
-  IncludeJavaScript (Config.closure_library_path + '/closure/goog/base.js');
+  IncludeJavaScript ('/node_modules/google-closure-library/closure/goog/base.js');
 </script>
 <script type="text/javascript">
   goog.require('goog.ui.Dialog');
@@ -16,6 +17,7 @@
   goog.require('goog.ui.TabBar');
   goog.require('goog.userAgent');
 </script>
+
 <script type="text/javascript">
   IncludeJavaScript (Config.jshashtable_path + '/jshashtable.js');
   IncludeJavaScript (Config.jshashtable_path + '/jshashset.js');

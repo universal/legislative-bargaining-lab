@@ -1,0 +1,23 @@
+{
+  "name": "legislative-bargaining-lab",
+  "version": "1.0.0",
+  "description": "This application can be used at https://jan-christiansen.github.io/legislative-bargaining-lab/. It is part of a research project about legislative bargaining.",
+  "main": "BargainLab.js",
+  "dependencies": {
+    "google-closure-library": "^20180204.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/universal/legislative-bargaining-lab.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/universal/legislative-bargaining-lab/issues"
+  },
+  "homepage": "https://github.com/universal/legislative-bargaining-lab#readme"
+}
