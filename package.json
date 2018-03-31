@@ -4,6 +4,7 @@
   "description": "This application can be used at https://jan-christiansen.github.io/legislative-bargaining-lab/. It is part of a research project about legislative bargaining.",
   "main": "BargainLab.js",
   "dependencies": {
+    "elm-static-html": "^1.3.2",
     "google-closure-library": "^20180204.0.0"
   },
   "devDependencies": {},

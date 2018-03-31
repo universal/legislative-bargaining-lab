@@ -14,7 +14,9 @@ import QOBDD exposing (BDD, QOBDD, parseMWVG, parsedMWVG, size)
 import Random exposing (Generator)
 import Vector exposing (toList)
 
-
+import Http
+import Json.Encode
+import Json.Decode
 -- split Model
 
 
@@ -48,12 +50,17 @@ type Msg
     | Random
     | Probs (List (List Float))
     | Parsed QOBDD
+    | PostModel
+    | PostModelResponse (Result Http.Error String)
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { text = "", qobdd = Nothing, probs = [] }, Cmd.none )
-
+    let
+        text = Games.gameDefinition Games.EU28
+        --text = Games.gameDefinition Games.Test
+    in
+    ( { text = text, qobdd = Nothing, probs = [] }, parseMWVG text )
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -80,6 +87,17 @@ update msg model =
 
         Probs fs ->
             ( { model | probs = fs }, Cmd.none )
+        PostModel ->
+            let
+                resultToString ( stmts, vs ) =
+                    vs ++ "\n\n" ++ GAMS.prettyStmts stmts
+                codeP = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmt <| o) model.qobdd))
+                codeAlpnhaWin = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaWin <| o) model.qobdd))
+                codeAlpnhaLose = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaLose <| o) model.qobdd))
+            in
+            ( model, Http.send PostModelResponse (postJsonTask (codeP ++ "\n\n" ++ codeAlpnhaWin ++ "\n\n" ++ codeAlpnhaLose)) )
+        PostModelResponse _ ->
+            ( model, Cmd.none )
 
 
 headerRow : Model -> Html Msg
@@ -102,6 +120,62 @@ gameOption : Game -> Html Msg
 gameOption game =
     option [ value (toString game) ] [ text (Games.showGame game) ]
 
+viewGamsCode : Model -> Html Msg
+viewGamsCode model =
+    div [ id "gams-code"]
+        [ viewFormula model
+          , p []
+              [ text "* alphawin code" ]
+          , viewAlphaWin model
+          , p []
+              [ text "* alphalose code" ]
+          , viewAlphaLose model
+        ]
+
+postGamsCode : Model -> Html Msg
+postGamsCode model =
+    div []
+        [
+          button [ onClick PostModel ] [ text "Post Model"]
+        ]
+
+jsonBody : String -> Http.Body
+jsonBody str =
+    Http.jsonBody <| Json.Encode.object [ ( "model", Json.Encode.string str ) ]
+
+postJsonTask : String ->  Http.Request String
+postJsonTask code =
+    Http.post
+        ( "http://localhost:3000/gams" )
+        ( jsonBody code )
+        ( tokenDecoder )
+tokenDecoder : Json.Decode.Decoder String
+tokenDecoder =
+    Json.Decode.field "status" Json.Decode.string
+
+
+
+--postJsonTask : String -> Task () ()
+--postJsonTask str =
+--    silenceTask
+--        <| Http.send
+--            Http.defaultSettings
+--            { verb = "POST"
+--            , headers =
+--                [ ( "Content-Type", "application/json" )
+--                , ( "Accept", "application/json" )
+--                ]
+--            , url = "http://localhost:5000/messages"
+--            , body = Http.string (jsonBody str)
+--            }
+
+--silenceTask : Task x a -> Task () ()
+--silenceTask task =
+--  task
+--  |> Task.map (\_-> ())
+--  |> Task.mapError (\_ -> ())
+
+
 
 view : Model -> Html Msg
 view model =
@@ -117,13 +191,7 @@ view model =
             , a [ href "https://www.gams.com" ] [ text "GAMS" ]
             , text " to calculate the probability of a proposal to be accepted."
             ]
-        , viewFormula model
-        , p []
-            [ text "* alphawin code" ]
-        , viewAlphaWin model
-        , p []
-            [ text "* alphalose code" ]
-        , viewAlphaLose model
+        , postGamsCode model
         ]
 
 
