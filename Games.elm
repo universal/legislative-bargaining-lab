@@ -15,11 +15,11 @@ type Game
     | Test2
     | HenningTest
     | BolusTest
-
+    | EU12Parties
 
 games : List Game
 games =
-    [ EU27, EU27Parties, EU28, EU28Parties, Squares, Canadian95, Test, Test2, HenningTest, BolusTest ]
+    [ Test, EU27, EU27Parties, EU28, EU28Parties, EU12Parties, Canadian95, Squares, Test2, HenningTest, BolusTest ]
 
 
 showGame : Game -> String
@@ -55,6 +55,9 @@ showGame g =
         BolusTest ->
             "Bolus Simple Game"
 
+        EU12Parties ->
+            "EU-12 with Parliament"
+
 
 fromString : String -> Maybe Game
 fromString str =
@@ -75,6 +78,9 @@ gameDefinition g =
 
         EU28Parties ->
             eu28Parties
+
+        EU12Parties ->
+            eu12Parties
 
         Squares ->
             magicSquares
@@ -367,3 +373,29 @@ eu28Parties =
 0 0 41 Europe of Freedom and Direct Democracy (EFDD)
 0 0 40 Europe of Nations and Freedom (ENL)
 0 0 18 Non-Inscrits (NI)"""
+
+
+eu12Parties =
+    """54 376
+10 0 Deutschland
+10 0 Frankreich
+10 0 Italien
+10 0 Grossbritannien
+8 0 Spanien
+5 0 Belgien
+5 0 Griechenland
+5 0 Niederlande
+5 0 Portugal
+3 0 Dänemark
+3 0 Irland
+2 0 Luxemburg
+0 217 EPP
+0 189 S&D
+0 74 ECR
+0 68 ALDE
+0 52 GUE-NGL
+0 51 Greens-EFA
+0 42 EFDD
+0 40 ENF
+0 18 Non-Inscrits
+"""

@@ -21,7 +21,7 @@ import Json.Decode
 
 
 type alias Model =
-    { text : String, qobdd : Maybe QOBDD, probs : List (List Float) }
+    { text : String, qobdd : Maybe QOBDD, probs : List (List Float), game: Maybe Game }
 
 
 hasQOBDD : Model -> Bool
@@ -56,11 +56,11 @@ type Msg
 
 init : ( Model, Cmd Msg )
 init =
-    let
-        --text = Games.gameDefinition Games.EU28
-        text = Games.gameDefinition Games.EU27
-    in
-    ( { text = text, qobdd = Nothing, probs = [] }, parseMWVG text )
+    --let
+    --    text = Games.gameDefinition Games.EU27
+    --in
+    --( { text = text, qobdd = Nothing, probs = [] }, parseMWVG text )
+    ( { text = "", qobdd = Nothing, probs = [], game = Nothing }, Cmd.none )
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -69,7 +69,7 @@ update msg model =
             ( model, parseMWVG model.text )
 
         Display g ->
-            ( { model | text = gameDefinition g }, Cmd.none )
+            ( { model | text = gameDefinition g, game = Just g }, Cmd.none )
 
         Input str ->
             ( { model | text = str }, Cmd.none )
@@ -92,10 +92,11 @@ update msg model =
                 resultToString ( stmts, vs ) =
                     vs ++ "\n\n" ++ GAMS.prettyStmts stmts
                 codeP = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmt <| o) model.qobdd))
-                codeAlpnhaWin = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaWin <| o) model.qobdd))
-                codeAlpnhaLose = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaLose <| o) model.qobdd))
+                codeAlphaWin = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaWin <| o) model.qobdd))
+                codeAlphaLose = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaLose <| o) model.qobdd))
+                game = Maybe.withDefault "no_game" (Maybe.map (\o -> Games.showGame o) model.game)
             in
-            ( model, Http.send PostModelResponse (postJsonTask (codeP ++ "\n\n" ++ codeAlpnhaWin ++ "\n\n" ++ codeAlpnhaLose)) )
+            ( model, Http.send PostModelResponse (postJsonTask (codeP ++ "\n\n" ++ codeAlphaWin ++ "\n\n" ++ codeAlphaLose) game) )
         PostModelResponse _ ->
             ( model, Cmd.none )
 
@@ -139,15 +140,15 @@ postGamsCode model =
           button [ onClick PostModel ] [ text "Post Model"]
         ]
 
-jsonBody : String -> Http.Body
-jsonBody str =
-    Http.jsonBody <| Json.Encode.object [ ( "model", Json.Encode.string str ) ]
+jsonBody : String -> String -> Http.Body
+jsonBody code game =
+    Http.jsonBody <| Json.Encode.object [ ( "code", Json.Encode.string code ), ( "game", Json.Encode.string game ) ]
 
-postJsonTask : String ->  Http.Request String
-postJsonTask code =
+postJsonTask : String -> String -> Http.Request String
+postJsonTask code game =
     Http.post
         ( "http://localhost:3000/gams" )
-        ( jsonBody code )
+        ( jsonBody code game )
         ( tokenDecoder )
 tokenDecoder : Json.Decode.Decoder String
 tokenDecoder =
@@ -192,7 +193,7 @@ view model =
             , text " to calculate the probability of a proposal to be accepted."
             ]
         , postGamsCode model
-        , viewGamsCode model
+        --, viewGamsCode model
         ]
 
 
