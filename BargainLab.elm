@@ -57,8 +57,8 @@ type Msg
 init : ( Model, Cmd Msg )
 init =
     let
-        text = Games.gameDefinition Games.EU28
-        --text = Games.gameDefinition Games.Test
+        --text = Games.gameDefinition Games.EU28
+        text = Games.gameDefinition Games.EU27
     in
     ( { text = text, qobdd = Nothing, probs = [] }, parseMWVG text )
 
@@ -192,6 +192,7 @@ view model =
             , text " to calculate the probability of a proposal to be accepted."
             ]
         , postGamsCode model
+        , viewGamsCode model
         ]
 
 
