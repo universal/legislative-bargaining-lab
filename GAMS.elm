@@ -30,18 +30,51 @@ type Exp
 
 
 add : Exp -> Exp -> Exp
-add =
-    BinOp Add
+add exp1 exp2 =
+    case ( exp1, exp2 ) of
+        ( Num n1, Num n2 ) ->
+            Num (n1 + n2)
+
+        ( Num 0, _ ) ->
+            exp2
+
+        ( _, Num 0 ) ->
+            exp1
+
+        _ ->
+            BinOp Add exp1 exp2
 
 
 minus : Exp -> Exp -> Exp
-minus =
-    BinOp Minus
+minus exp1 exp2 =
+    case ( exp1, exp2 ) of
+        ( Num n1, Num n2 ) ->
+            Num (n1 - n2)
+
+        _ ->
+            BinOp Minus exp1 exp2
 
 
 mult : Exp -> Exp -> Exp
-mult =
-    BinOp Mult
+mult exp1 exp2 =
+    case ( exp1, exp2 ) of
+        ( Num n1, Num n2 ) ->
+            Num (n1 * n2)
+
+        ( Num 0, _ ) ->
+            Num 0
+
+        ( Num 1, _ ) ->
+            exp2
+
+        ( _, Num 0 ) ->
+            Num 0
+
+        ( _, Num 1 ) ->
+            exp1
+
+        _ ->
+            BinOp Mult exp1 exp2
 
 
 prettyExp : Exp -> String
@@ -53,12 +86,6 @@ prettyExp exp =
         Var string ->
             string
 
-        BinOp Add (Num i) (Num k) -> toString (i + k)
-        BinOp Add (Num 0) exp -> prettyExp exp
-        BinOp Add exp (Num 0) -> prettyExp exp
-        BinOp Minus (Num i) (Num k) -> toString (i - k)
-        BinOp Mult (Num 0) exp2 -> "0"
-        BinOp Mult exp (Num 0) -> "0"
         BinOp op exp exp2 ->
             "(" ++ prettyExp exp ++ " " ++ prettyOp op ++ " " ++ prettyExp exp2 ++ ")"
 
@@ -131,11 +158,6 @@ stmtTree vars =
 
         node i ( s1, v1, vars1 ) label ( s2, v2, vars2 ) =
             let
-                check = ident 1
-                player label v2 =
-                    case (Var (ident label)) of
-                        Var check -> Num 0
-                        x -> (mult (minus (Num 1) x) v2)
                 assignment =
                     term i := add (mult (Var (ident label)) v1) (mult (minus (Num 1) (Var (ident label))) v2)
             in

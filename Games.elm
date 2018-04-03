@@ -6,7 +6,9 @@ import Json.Decode as Json
 
 type Game
     = EU27
+    | EU27Parties
     | EU28
+    | EU28Parties
     | Squares
     | Canadian95
     | Test
@@ -17,7 +19,7 @@ type Game
 
 games : List Game
 games =
-    [ EU27, EU28, Squares, Canadian95, Test, Test2, HenningTest, BolusTest ]
+    [ EU27, EU27Parties, EU28, EU28Parties, Squares, Canadian95, Test, Test2, HenningTest, BolusTest ]
 
 
 showGame : Game -> String
@@ -26,8 +28,14 @@ showGame g =
         EU27 ->
             "EU-27"
 
+        EU27Parties ->
+            "EU-28 with Parliament"
+
         EU28 ->
             "EU-28"
+
+        EU28Parties ->
+            "EU-28 with Parliament"
 
         Squares ->
             "Magic Squares"
@@ -59,8 +67,14 @@ gameDefinition g =
         EU27 ->
             eu27
 
+        EU27Parties ->
+            eu27Parties
+
         EU28 ->
             eu28
+
+        EU28Parties ->
+            eu28Parties
 
         Squares ->
             magicSquares
@@ -174,7 +188,7 @@ magicSquares =
 """
 
 
-eu27 =
+eu27Parties =
     """# Council of Ministers of the European Union
 # (Treaty of Lisbon)
 #
@@ -222,8 +236,88 @@ eu27 =
 0 0 0 18 Non Inscrits
 """
 
+eu27 =
+    """# Council of Ministers of the European Union
+# (Treaty of Lisbon)
+#
+# See: http://en.wikipedia.org/wiki/Treaty_of_Lisbon
+# (Number of Votes AND Population) OR (Blocking Miniority)
+%join ((1 AND 2) OR 3)
+%type binary
+# 55% and 65% or at least at most four not supporting it
+15 32400 24
+1 8200 1 Germany
+1 6400 1 France
+1 6200 1 United
+1 6000 1 Italy
+1 4500 1 Spain
+1 3800 1 Poland
+1 2100 1 Romania
+1 1700 1 Netherlands
+1 1100 1 Greece
+1 1100 1 Portugal
+1 1100 1 Belgium
+1 1000 1 Czech
+1 1000 1 Hungary
+1 920 1 Sweden
+1 830 1 Austria
+1 760 1 Bulgaria
+1 550 1 Denmark
+1 540 1 Slovakia
+1 530 1 Finland
+1 450 1 Ireland
+1 330 1 Lithuania
+1 220 1 Latvia
+1 200 1 Slovenia
+1 130 1 Estonia
+1 87 1 Cyprus
+1 49 1 Luxembourg
+1 41 1 Malta
+"""
 
 eu28 =
+    """## Council
+# see http://www.consilium.europa.eu/en/council-eu/voting-system/qualified-majority/
+# and voting calculator for pop shares
+# missing: The blocking minority must include at least four Council members representing more than 35% of the EU population.
+# https://www.lexology.com/library/detail.aspx?g=232a482a-c56b-48da-936d-413c583391fe
+# http://www.cms-lawnow.com/~/media/Files/RegZone/TrainingSeminarsPDFs/QMV%20report%20German%20EU%20Foundation%20Series.pdf#page=2
+## Parliament
+# for parliament seat shares see: https://en.wikipedia.org/wiki/Political_groups_of_the_European_Parliament#Current_composition_of_the_8th_European_Parliament
+# vacant seats not included
+%join (1 AND 2)
+%type binary
+16 6500
+1 1606 Germany
+1 1305 France
+1 1279 United Kingdom
+1 1200 Italy
+1 909 Spain
+1 743 Poland
+1 387 Romania
+1 337 Netherlands
+1 221 Belgium
+1 211 Greece
+1 204 Czech Republic
+1 202 Portugal
+1 196 Sweden
+1 192 Hungary
+1 171 Austria
+1 140 Bulgaria
+1 112 Denmark
+1 107 Finland
+1 106 Slovakia
+1 91 Ireland
+1 82 Croatia
+1 57 Lithuania
+1 40 Slovenia
+1 39 Latvia
+1 26 Estonia
+1 17 Cyprus
+1 11 Luxembourg
+"""
+
+eu28Parties =
     """## Council
 # see http://www.consilium.europa.eu/en/council-eu/voting-system/qualified-majority/
 # and voting calculator for pop shares
