@@ -94,9 +94,11 @@ update msg model =
                 codeP = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmt <| o) model.qobdd))
                 codeAlphaWin = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaWin <| o) model.qobdd))
                 codeAlphaLose = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaLose <| o) model.qobdd))
+                codeWith = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtWith <| o) model.qobdd))
+                codeWithout = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtWithout <| o) model.qobdd))
                 game = Maybe.withDefault "no_game" (Maybe.map (\o -> Games.showGame o) model.game)
             in
-            ( model, Http.send PostModelResponse (postJsonTask (codeP ++ "\n\n" ++ codeAlphaWin ++ "\n\n" ++ codeAlphaLose) game) )
+            ( model, Http.send PostModelResponse (postJsonTask (codeP ++ "\n\n" ++ codeAlphaWin ++ "\n\n" ++ codeAlphaLose ++ "\n\n" ++ codeWith ++ "\n\n" ++ codeWithout) game) )
         PostModelResponse _ ->
             ( model, Cmd.none )
 
@@ -245,6 +247,25 @@ viewAlphaLose model =
     in
     div []
         [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaLose <| o) model.qobdd)) ] ]
+
+
+viewWith : Model -> Html Msg
+viewWith model =
+    let
+        resultToString ( stmts, vs ) =
+            vs ++ "\n\n" ++ GAMS.prettyStmts stmts
+    in
+    div []
+        [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtWith <| o) model.qobdd)) ] ]
+
+viewWithout : Model -> Html Msg
+viewWithout model =
+    let
+        resultToString ( stmts, vs ) =
+            vs ++ "\n\n" ++ GAMS.prettyStmts stmts
+    in
+    div []
+        [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtWithout <| o) model.qobdd)) ] ]
 
 
 viewProbs : List (List Float) -> Html Msg

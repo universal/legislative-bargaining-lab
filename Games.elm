@@ -15,11 +15,13 @@ type Game
     | Test2
     | HenningTest
     | BolusTest
+    | EU12
     | EU12Parties
+    | SimpleComb
 
 games : List Game
 games =
-    [ Test, EU27, EU27Parties, EU28, EU28Parties, EU12Parties, Canadian95, Squares, Test2, HenningTest, BolusTest ]
+    [ Test, EU27, EU27Parties, EU28, EU28Parties, EU12, EU12Parties, Canadian95, Squares, Test2, HenningTest, BolusTest, SimpleComb ]
 
 
 showGame : Game -> String
@@ -29,7 +31,7 @@ showGame g =
             "EU-27"
 
         EU27Parties ->
-            "EU-28 with Parliament"
+            "EU-27 with Parliament"
 
         EU28 ->
             "EU-28"
@@ -55,10 +57,14 @@ showGame g =
         BolusTest ->
             "Bolus Simple Game"
 
+        EU12 ->
+            "EU-12"
+
         EU12Parties ->
             "EU-12 with Parliament"
 
-
+        SimpleComb ->
+            "Canadian95 combined with Simple Game"
 fromString : String -> Maybe Game
 fromString str =
     Dict.get str (Dict.fromList (List.map (\g -> ( toString g, g )) games))
@@ -78,6 +84,9 @@ gameDefinition g =
 
         EU28Parties ->
             eu28Parties
+
+        EU12 ->
+            eu12
 
         EU12Parties ->
             eu12Parties
@@ -100,7 +109,8 @@ gameDefinition g =
         BolusTest ->
             bolusTest
 
-
+        SimpleComb ->
+            simpleComb
 gameDecoder : String -> Json.Decoder Game
 gameDecoder str =
     case fromString str of
@@ -376,11 +386,12 @@ eu28Parties =
 
 
 eu12Parties =
-    """54 376
+    """# parliament from 1994: https://de.wikipedia.org/wiki/Europawahl_1994
+54 289
 10 0 Deutschland
 10 0 Frankreich
 10 0 Italien
-10 0 Grossbritannien
+10 0 Großbritannien
 8 0 Spanien
 5 0 Belgien
 5 0 Griechenland
@@ -389,13 +400,53 @@ eu12Parties =
 3 0 Dänemark
 3 0 Irland
 2 0 Luxemburg
-0 217 EPP
-0 189 S&D
-0 74 ECR
-0 68 ALDE
-0 52 GUE-NGL
-0 51 Greens-EFA
-0 42 EFDD
-0 40 ENF
-0 18 Non-Inscrits
-"""
+0 198 Sozialdemokratische Partei Europas
+0 157 Europäische Volkspartei (Christdemokraten)
+0 43 Europäische Liberale, Demokratische und Reformpartei
+0 28 Konföderale Fraktion der Vereinten Europäischen Linken (Sozialisten und Kommunisten)
+0 27 Forza Europa (Forza Italia)
+0 26 Sammlungsbewegung der Europäischen Demokraten (Gaullisten)
+0 23 Fraktion Die Grünen
+0 19 Europäische Radikale Allianz (Radikalliberale und Regionalisten)
+0 19 Europa der Nationen (Europaskeptiker)
+0 27 Fraktionslose Abgeordnete"""
+
+eu12 =
+    """54
+10 Deutschland
+10 Frankreich
+10 Italien
+10 Großbritannien
+8 Spanien
+5 Belgien
+5 Griechenland
+5 Niederlande
+5 Portugal
+3 Dänemark
+3 Irland
+2 Luxemburg"""
+
+simpleComb =
+    """%join ((1 AND 2) AND 3)
+%type binary
+7 50 73
+1 34 0 Ontario
+1 29 0 Quebec
+1 9 0 British Columbia
+1 7 0 Alberta
+1 5 0 Saskatchewan
+1 5 0 Manitoba
+1 4 0 Nova Scotia
+1 3 0 New Brunswick
+1 3 0 Newfoundland
+1 1 0 Prince Edward Island
+0 0 36 s1
+0 0 35 s2
+0 0 20 s3
+0 0 15 s6
+0 0 10 s4
+0 0 10 s5
+0 0 8 s7
+0 0 6 s8
+0 0 4 s9
+0 0 2 s10"""
