@@ -206,6 +206,7 @@ view model =
             ]
         , postGamsCode model
         , viewFormula model
+        , viewDiff model
         , div []
               [
                 button [ onClick Simplify ] [ text "Simplify" ]
@@ -243,6 +244,16 @@ viewFormula model =
     in
     div []
         [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmt <| o) model.qobdd)) ] ]
+
+
+viewDiff : Model -> Html Msg
+viewDiff model =
+    let
+        resultToString ( stmts, vs ) =
+            vs ++ "\n\n" ++ GAMS.prettyStmts stmts
+    in
+    div []
+        [ pre [] [ text (Maybe.withDefault "diff not available" (Maybe.map (\o -> resultToString <| GAMS.stmtDiff <| o) model.qobdd)) ] ]
 
 
 viewAlphaWin : Model -> Html Msg

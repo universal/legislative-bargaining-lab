@@ -244,6 +244,9 @@ stmtWith qobdd = stmtAlpha stmtTreeWith qobdd
 stmtWithout : QOBDD -> ( List Stmt, String )
 stmtWithout qobdd = stmtAlpha stmtTreeWithout qobdd
 
+stmtDiff : QOBDD -> ( List Stmt, String )
+stmtDiff qobdd = stmtAlpha stmtTreeDiff qobdd
+
 
 stmtAlphaWin : QOBDD -> ( List Stmt, String )
 stmtAlphaWin qobdd = stmtAlpha stmtTreeAlphaWin qobdd
@@ -402,6 +405,40 @@ stmtTreeAlphaLose vars checkIdent =
                         (mult (Var (ident label)) v1)
                 assignment =
                     term i := add (player label v1) (mult (minus (Num 1) (Var (ident label))) v2)
+            in
+            ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
+    in
+    QOBDD.foldBDD ( [], Num 0, [] ) ( [], Num 1, [] ) ref node
+
+stmtTreeDiff : Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )
+stmtTreeDiff vars checkIdent =
+    let
+        term i =
+            "diff_t(\"" ++ toString checkIdent ++ "\", \"" ++ toString i ++ "\")"
+
+        ident i =
+            case Dict.get i vars of
+                Nothing ->
+                    Debug.crash ("Error: " ++ toString i ++ " not found in " ++ toString vars)
+
+                Just v ->
+                    v
+
+        ref i =
+            ( [], Var (term i), [] )
+        check = Var (ident checkIdent)
+        node i ( s1, v1, vars1 ) label ( s2, v2, vars2 ) =
+            let
+                player label v2 =
+                    let
+                        playerVar = Var (ident label)
+                    in
+                    if check == playerVar then
+                        (mult (Num -1) (mult (Num 1) v2))
+                    else
+                        (mult (Num 1) v2)
+                assignment =
+                    term i := add (mult (Num 1) v1) (player label v2)
             in
             ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
     in
