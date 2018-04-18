@@ -89,28 +89,33 @@ prettyExp exp =
         BinOp op exp exp2 ->
             "(" ++ prettyExp exp ++ " " ++ prettyOp op ++ " " ++ prettyExp exp2 ++ ")"
 
-replaceZero : String -> Exp -> Exp
-replaceZero var exp =
+replaceNum : String -> Int -> Exp -> Exp
+replaceNum var const exp =
     case exp of
         Var v2 ->
             if var == v2 then
-                Num 0
+                Num const
             else
                 Var v2
-        BinOp op exp1 exp2 -> BinOp op (replaceZero var exp1) (replaceZero var exp2)
+        BinOp op exp1 exp2 -> BinOp op (replaceNum var const exp1) (replaceNum var const exp2)
         _ -> exp
 
-replaceZeroStmt : String -> Stmt -> Stmt
-replaceZeroStmt rep (Assign var exp) =
-    Assign var (replaceZero rep exp)
+replaceNumStmt : String -> Int -> Stmt -> Stmt
+replaceNumStmt rep const (Assign var exp) =
+    Assign var (replaceNum rep const exp)
 
-replaceZeroStmts : String -> List Stmt -> List Stmt
-replaceZeroStmts var stmts =
-    List.map (replaceZeroStmt var) stmts
+replaceNumStmts : Int -> String -> List Stmt -> List Stmt
+replaceNumStmts const var stmts =
+    List.map (replaceNumStmt var const) stmts
 
 simplifyExp : Exp -> Exp
 simplifyExp exp =
     case exp of
+        (BinOp Add exp1 (BinOp Minus (Num 1) exp2)) ->
+            if exp1 == exp2 then
+                Num 1
+            else
+                BinOp Add exp1 (BinOp Minus (Num 1) exp2)
         (BinOp Mult (Num 0) exp2) -> Num 0
         (BinOp Mult (Num 1) exp2) -> exp2
         (BinOp Mult exp1 (Num 0)) -> Num 0
@@ -132,10 +137,10 @@ simplifyStmt : Stmt -> Stmt
 simplifyStmt (Assign var exp) =
     Assign var (simplifyExp exp)
 
-zeroStmt : Stmt -> Bool
-zeroStmt (Assign var exp) =
+numStmt : Int -> Stmt -> Bool
+numStmt const (Assign var exp) =
     case exp of
-        Num 0 -> True
+        Num i -> if i == const then True else False
         _ -> False
 
 extractVar : Stmt -> String
@@ -145,15 +150,17 @@ simplifyStmts : List Stmt -> List Stmt
 simplifyStmts stmts =
     let
         simplified = List.map (simplifyStmt) stmts
-        (zeros, rest) = List.partition zeroStmt simplified
+        (zeros, rest) = List.partition (numStmt 0) simplified
         blub = Debug.log "Fuck" zeros
-        --zeroVars = List.map extractVar zeros
-        --replaced = List.foldl replaceZeroStmts rest zeroVars
+        replacedZeros = (List.foldl (replaceNumStmts 0) rest (List.map extractVar zeros))
+        (ones, onesRest) = List.partition (numStmt 1) replacedZeros
+        result = (List.foldl (replaceNumStmts 1) onesRest (List.map extractVar ones))
+        blub2 = Debug.log "result" result
     in
-        if List.length zeros == 0 then
-            rest
+        if List.length zeros == 0 && List.length ones == 0 then
+            result
         else
-            simplifyStmts (List.foldl replaceZeroStmts rest (List.map extractVar zeros))
+            simplifyStmts result
 
 
 type Stmt
