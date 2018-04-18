@@ -89,6 +89,72 @@ prettyExp exp =
         BinOp op exp exp2 ->
             "(" ++ prettyExp exp ++ " " ++ prettyOp op ++ " " ++ prettyExp exp2 ++ ")"
 
+replaceZero : String -> Exp -> Exp
+replaceZero var exp =
+    case exp of
+        Var v2 ->
+            if var == v2 then
+                Num 0
+            else
+                Var v2
+        BinOp op exp1 exp2 -> BinOp op (replaceZero var exp1) (replaceZero var exp2)
+        _ -> exp
+
+replaceZeroStmt : String -> Stmt -> Stmt
+replaceZeroStmt rep (Assign var exp) =
+    Assign var (replaceZero rep exp)
+
+replaceZeroStmts : String -> List Stmt -> List Stmt
+replaceZeroStmts var stmts =
+    List.map (replaceZeroStmt var) stmts
+
+simplifyExp : Exp -> Exp
+simplifyExp exp =
+    case exp of
+        (BinOp Mult (Num 0) exp2) -> Num 0
+        (BinOp Mult (Num 1) exp2) -> exp2
+        (BinOp Mult exp1 (Num 0)) -> Num 0
+        (BinOp Mult exp1 (Num 1)) -> exp1
+        (BinOp Add exp1 (Num 0)) -> exp1
+        (BinOp Add (Num 0) exp2) -> exp2
+        (BinOp op exp1 exp2) ->
+            let
+                sexp1 = (simplifyExp exp1)
+                sexp2 = (simplifyExp exp2)
+            in
+                if exp1 == sexp1 && exp2 == sexp2 then
+                    BinOp op exp1 exp2
+                else
+                    simplifyExp (BinOp op sexp1 sexp2)
+        _ -> exp
+
+simplifyStmt : Stmt -> Stmt
+simplifyStmt (Assign var exp) =
+    Assign var (simplifyExp exp)
+
+zeroStmt : Stmt -> Bool
+zeroStmt (Assign var exp) =
+    case exp of
+        Num 0 -> True
+        _ -> False
+
+extractVar : Stmt -> String
+extractVar (Assign var _) = var
+
+simplifyStmts : List Stmt -> List Stmt
+simplifyStmts stmts =
+    let
+        simplified = List.map (simplifyStmt) stmts
+        (zeros, rest) = List.partition zeroStmt simplified
+        blub = Debug.log "Fuck" zeros
+        --zeroVars = List.map extractVar zeros
+        --replaced = List.foldl replaceZeroStmts rest zeroVars
+    in
+        if List.length zeros == 0 then
+            rest
+        else
+            simplifyStmts (List.foldl replaceZeroStmts rest (List.map extractVar zeros))
+
 
 type Stmt
     = Assign String Exp

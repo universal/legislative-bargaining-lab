@@ -52,6 +52,7 @@ type Msg
     | Parsed QOBDD
     | PostModel
     | PostModelResponse (Result Http.Error String)
+    | Simplify
 
 
 init : ( Model, Cmd Msg )
@@ -101,6 +102,15 @@ update msg model =
             ( model, Http.send PostModelResponse (postJsonTask (codeP ++ "\n\n" ++ codeAlphaWin ++ "\n\n" ++ codeAlphaLose ++ "\n\n" ++ codeWith ++ "\n\n" ++ codeWithout) game) )
         PostModelResponse _ ->
             ( model, Cmd.none )
+
+        Simplify ->
+            let
+                (stmts, b) = case model.qobdd of
+                    Just q -> GAMS.stmt q
+                    Nothing -> Debug.crash "asdasd"
+            in
+
+            ( {model | text = GAMS.prettyStmts (GAMS.simplifyStmts stmts) }, Cmd.none )
 
 
 headerRow : Model -> Html Msg
@@ -195,8 +205,13 @@ view model =
             , text " to calculate the probability of a proposal to be accepted."
             ]
         , postGamsCode model
-        --, viewGamsCode model
+        , viewFormula model
+        , div []
+              [
+                button [ onClick Simplify ] [ text "Simplify" ]
+              ]
         ]
+
 
 
 viewSize : Model -> Html Msg
