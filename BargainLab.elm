@@ -52,7 +52,6 @@ type Msg
     | Parsed QOBDD
     | PostModel
     | PostModelResponse (Result Http.Error String)
-    | Simplify
 
 
 init : ( Model, Cmd Msg )
@@ -93,25 +92,13 @@ update msg model =
                 resultToString ( stmts, vs ) =
                     vs ++ "\n\n" ++ GAMS.prettyStmts stmts
                 codeP = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmt <| o) model.qobdd))
-                codeAlphaWin = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaWin <| o) model.qobdd))
-                codeAlphaLose = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaLose <| o) model.qobdd))
-                codeWith = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtWith <| o) model.qobdd))
-                codeWithout = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtWithout <| o) model.qobdd))
+                codeAlphaDiff = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaDiff <| o) model.qobdd))
+                codeDiff = (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtDiff <| o) model.qobdd))
                 game = Maybe.withDefault "no_game" (Maybe.map (\o -> Games.showGame o) model.game)
             in
-            ( model, Http.send PostModelResponse (postJsonTask (codeP ++ "\n\n" ++ codeAlphaWin ++ "\n\n" ++ codeAlphaLose ++ "\n\n" ++ codeWith ++ "\n\n" ++ codeWithout) game) )
+            ( model, Http.send PostModelResponse (postJsonTask (codeP ++ "\n\n" ++ codeAlphaDiff ++ "\n\n" ++ codeDiff ) game) )
         PostModelResponse _ ->
             ( model, Cmd.none )
-
-        Simplify ->
-            let
-                (stmts, b) = case model.qobdd of
-                    Just q -> GAMS.stmt q
-                    Nothing -> Debug.crash "asdasd"
-            in
-
-            ( {model | text = GAMS.prettyStmts (GAMS.simplifyStmts stmts) }, Cmd.none )
-
 
 headerRow : Model -> Html Msg
 headerRow model =
@@ -138,11 +125,11 @@ viewGamsCode model =
     div [ id "gams-code"]
         [ viewFormula model
           , p []
-              [ text "* alphawin code" ]
-          , viewAlphaWin model
+              [ text "* alphadiff code" ]
+          , viewAlphaDiff model
           , p []
-              [ text "* alphalose code" ]
-          , viewAlphaLose model
+              [ text "* diff code" ]
+          , viewDiff model
         ]
 
 postGamsCode : Model -> Html Msg
@@ -205,12 +192,8 @@ view model =
             , text " to calculate the probability of a proposal to be accepted."
             ]
         , postGamsCode model
-        , viewFormula model
-        , viewDiff model
-        , div []
-              [
-                button [ onClick Simplify ] [ text "Simplify" ]
-              ]
+        --, viewFormula model
+        --, viewDiff model
         ]
 
 
@@ -245,6 +228,14 @@ viewFormula model =
     div []
         [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmt <| o) model.qobdd)) ] ]
 
+viewAlphaDiff : Model -> Html Msg
+viewAlphaDiff model =
+    let
+        resultToString ( stmts, vs ) =
+            vs ++ "\n\n" ++ GAMS.prettyStmts stmts
+    in
+    div []
+        [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaDiff <| o) model.qobdd)) ] ]
 
 viewDiff : Model -> Html Msg
 viewDiff model =
@@ -254,45 +245,6 @@ viewDiff model =
     in
     div []
         [ pre [] [ text (Maybe.withDefault "diff not available" (Maybe.map (\o -> resultToString <| GAMS.stmtDiff <| o) model.qobdd)) ] ]
-
-
-viewAlphaWin : Model -> Html Msg
-viewAlphaWin model =
-    let
-        resultToString ( stmts, vs ) =
-            vs ++ "\n\n" ++ GAMS.prettyStmts stmts
-    in
-    div []
-        [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaWin <| o) model.qobdd)) ] ]
-
-viewAlphaLose : Model -> Html Msg
-viewAlphaLose model =
-    let
-        resultToString ( stmts, vs ) =
-            vs ++ "\n\n" ++ GAMS.prettyStmts stmts
-    in
-    div []
-        [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtAlphaLose <| o) model.qobdd)) ] ]
-
-
-viewWith : Model -> Html Msg
-viewWith model =
-    let
-        resultToString ( stmts, vs ) =
-            vs ++ "\n\n" ++ GAMS.prettyStmts stmts
-    in
-    div []
-        [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtWith <| o) model.qobdd)) ] ]
-
-viewWithout : Model -> Html Msg
-viewWithout model =
-    let
-        resultToString ( stmts, vs ) =
-            vs ++ "\n\n" ++ GAMS.prettyStmts stmts
-    in
-    div []
-        [ pre [] [ text (Maybe.withDefault "formula not available" (Maybe.map (\o -> resultToString <| GAMS.stmtWithout <| o) model.qobdd)) ] ]
-
 
 viewProbs : List (List Float) -> Html Msg
 viewProbs probs =
@@ -310,7 +262,6 @@ viewProbsRow i probs =
 viewProb : Float -> String
 viewProb f =
     toString f
-
 
 viewPowerList : Model -> Html Msg
 viewPowerList model =

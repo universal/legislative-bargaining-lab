@@ -104,8 +104,8 @@ replaceNumStmt : String -> Int -> Stmt -> Stmt
 replaceNumStmt rep const (Assign var exp) =
     Assign var (replaceNum rep const exp)
 
-replaceNumStmts : Int -> String -> List Stmt -> List Stmt
-replaceNumStmts const var stmts =
+replaceNumStmts : (String, Int) -> List Stmt -> List Stmt
+replaceNumStmts (var, const) stmts =
     List.map (replaceNumStmt var const) stmts
 
 simplifyExp : Exp -> Exp
@@ -115,11 +115,14 @@ simplifyExp exp =
             if exp1 == exp2 then
                 Num 1
             else
-                BinOp Add exp1 (BinOp Minus (Num 1) exp2)
+                BinOp Add (simplifyExp exp1) (BinOp Minus (Num 1) (simplifyExp exp2))
+        (BinOp Mult (Num i) (Num j)) -> Num (i * j)
         (BinOp Mult (Num 0) exp2) -> Num 0
         (BinOp Mult (Num 1) exp2) -> exp2
         (BinOp Mult exp1 (Num 0)) -> Num 0
         (BinOp Mult exp1 (Num 1)) -> exp1
+        (BinOp Add (Num i) (Num j)) -> Num (i+j)
+        (BinOp Minus (Num i) (Num j)) -> Num (i-j)
         (BinOp Add exp1 (Num 0)) -> exp1
         (BinOp Add (Num 0) exp2) -> exp2
         (BinOp op exp1 exp2) ->
@@ -137,27 +140,29 @@ simplifyStmt : Stmt -> Stmt
 simplifyStmt (Assign var exp) =
     Assign var (simplifyExp exp)
 
-numStmt : Int -> Stmt -> Bool
-numStmt const (Assign var exp) =
+numStmt : Stmt -> Bool
+numStmt (Assign var exp) =
     case exp of
-        Num i -> if i == const then True else False
+        Num i -> True
         _ -> False
 
-extractVar : Stmt -> String
-extractVar (Assign var _) = var
+extractVar : Stmt -> (String, Int)
+extractVar (Assign var exp) =
+    case exp of
+        Num i -> (var, i)
+        _ -> Debug.crash "selected a num statement where i shouldn't have"
 
 simplifyStmts : List Stmt -> List Stmt
 simplifyStmts stmts =
     let
-        simplified = List.map (simplifyStmt) stmts
-        (zeros, rest) = List.partition (numStmt 0) simplified
-        blub = Debug.log "Fuck" zeros
-        replacedZeros = (List.foldl (replaceNumStmts 0) rest (List.map extractVar zeros))
-        (ones, onesRest) = List.partition (numStmt 1) replacedZeros
-        result = (List.foldl (replaceNumStmts 1) onesRest (List.map extractVar ones))
-        blub2 = Debug.log "result" result
+        simplified = List.map simplifyStmt stmts
+        (nums, rest) = List.partition numStmt simplified
+        result = if List.length rest > 0 then
+                List.map simplifyStmt (List.foldl replaceNumStmts rest (List.map extractVar nums))
+            else
+                List.map simplifyStmt nums
     in
-        if List.length zeros == 0 && List.length ones == 0 then
+        if List.length nums == 0  || List.length rest == 1 then
             result
         else
             simplifyStmts result
@@ -195,7 +200,7 @@ stmt qobdd =
         ( stmts, v, vs ) =
             stmtTree (vars qobdd.vars) qobdd.bdd
     in
-    ( stmts ++ [ "%1" := v ], setVars vs )
+    ( simplifyStmts stmts ++ [ "%1" := v ], setVars vs )
 
 
 
@@ -238,96 +243,15 @@ stmtTree vars =
     in
     QOBDD.foldBDD ( [], Num 0, [] ) ( [], Num 1, [] ) ref node
 
-stmtWith : QOBDD -> ( List Stmt, String )
-stmtWith qobdd = stmtAlpha stmtTreeWith qobdd
-
-stmtWithout : QOBDD -> ( List Stmt, String )
-stmtWithout qobdd = stmtAlpha stmtTreeWithout qobdd
-
 stmtDiff : QOBDD -> ( List Stmt, String )
-stmtDiff qobdd = stmtAlpha stmtTreeDiff qobdd
+stmtDiff qobdd = stmtAlphaSimplified stmtTreeDiff qobdd
+
+stmtAlphaDiff : QOBDD -> ( List Stmt, String )
+stmtAlphaDiff qobdd = stmtAlphaSimplified stmtTreeAlphaDiff qobdd
 
 
-stmtAlphaWin : QOBDD -> ( List Stmt, String )
-stmtAlphaWin qobdd = stmtAlpha stmtTreeAlphaWin qobdd
-
-stmtAlphaLose : QOBDD -> ( List Stmt, String )
-stmtAlphaLose qobdd = stmtAlpha stmtTreeAlphaLose qobdd
-
-
-
-stmtTreeWith : Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )
-stmtTreeWith vars checkIdent =
-    let
-        term i =
-            "with_t(\"" ++ toString checkIdent ++ "\", \"" ++ toString i ++ "\")"
-
-        ident i =
-            case Dict.get i vars of
-                Nothing ->
-                    Debug.crash ("Error: " ++ toString i ++ " not found in " ++ toString vars)
-
-                Just v ->
-                    v
-
-        ref i =
-            ( [], Var (term i), [] )
-        check = Var (ident checkIdent)
-        node i ( s1, v1, vars1 ) label ( s2, v2, vars2 ) =
-            let
-                player label v2 =
-                    let
-                        playerVar = Var (ident label)
-                    in
-                    if check == playerVar then
-                        Num 0
-                    else
-                        (mult (Num 1) v2)
-                assignment =
-                    term i := add (mult (Num 1) v1) (player label v2)
-            in
-            ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
-    in
-    QOBDD.foldBDD ( [], Num 0, [] ) ( [], Num 1, [] ) ref node
-
-
-stmtTreeWithout : Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )
-stmtTreeWithout vars checkIdent =
-    let
-        term i =
-            "without_t(\"" ++ toString checkIdent ++ "\", \"" ++ toString i ++ "\")"
-
-        ident i =
-            case Dict.get i vars of
-                Nothing ->
-                    Debug.crash ("Error: " ++ toString i ++ " not found in " ++ toString vars)
-
-                Just v ->
-                    v
-
-        ref i =
-            ( [], Var (term i), [] )
-        check = Var (ident checkIdent)
-        node i ( s1, v1, vars1 ) label ( s2, v2, vars2 ) =
-            let
-                player label v1 =
-                    let
-                        playerVar = Var (ident label)
-                    in
-                    if check == playerVar then
-                        Num 0
-                    else
-                        (mult (Num 1) v1)
-                assignment =
-                    term i := add (player label v1) (mult (Num 1) v2)
-            in
-            ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
-    in
-    QOBDD.foldBDD ( [], Num 0, [] ) ( [], Num 1, [] ) ref node
-
-
-stmtAlpha : (Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )) -> QOBDD -> ( List Stmt, String )
-stmtAlpha f qobdd =
+stmtAlphaSimplified : (Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )) -> QOBDD -> ( List Stmt, String )
+stmtAlphaSimplified f qobdd =
      let
         -- List Int
         actors = List.range 0 (qobdd.vars - 1)
@@ -337,78 +261,10 @@ stmtAlpha f qobdd =
         -- list of tuples, with each tuple containing a list of stmts, an exp, and a list of Ints
         result = List.map (\i -> f varList i qobdd.bdd) actors
         mergeTrees : ( List Stmt, Exp, List Int ) -> ( List Stmt, String ) -> ( List Stmt, String )
-        mergeTrees (stmts, v, vs) (merged_smts, merged_vars) = (merged_smts ++ stmts ++ [ "%1" := v ], merged_vars)
+        mergeTrees (stmts, v, vs) (merged_smts, merged_vars) = (merged_smts ++ (simplifyStmts stmts) ++ [ "%1" := v ], merged_vars)
      in
      ( List.foldl mergeTrees ([], "") result )
 
-
-stmtTreeAlphaWin : Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )
-stmtTreeAlphaWin vars checkIdent =
-    let
-        term i =
-            "alphawin_t(g, \"" ++ toString checkIdent ++ "\", \"" ++ toString i ++ "\")"
-
-        ident i =
-            case Dict.get i vars of
-                Nothing ->
-                    Debug.crash ("Error: " ++ toString i ++ " not found in " ++ toString vars)
-
-                Just v ->
-                    v
-
-        ref i =
-            ( [], Var (term i), [] )
-        check = Var (ident checkIdent)
-        node i ( s1, v1, vars1 ) label ( s2, v2, vars2 ) =
-            let
-                player label v2 =
-                    let
-                        playerVar = Var (ident label)
-                    in
-                    if check == playerVar then
-                        Num 0
-                    else
-                        (mult (minus (Num 1) playerVar) v2)
-                assignment =
-                    term i := add (mult (Var (ident label)) v1) (player label v2)
-            in
-            ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
-    in
-    QOBDD.foldBDD ( [], Num 0, [] ) ( [], Num 1, [] ) ref node
-
-stmtTreeAlphaLose : Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )
-stmtTreeAlphaLose vars checkIdent =
-    let
-        term i =
-            "alphalose_t(g, \"" ++ toString checkIdent ++ "\", \"" ++ toString i ++ "\")"
-
-        ident i =
-            case Dict.get i vars of
-                Nothing ->
-                    Debug.crash ("Error: " ++ toString i ++ " not found in " ++ toString vars)
-
-                Just v ->
-                    v
-
-        ref i =
-            ( [], Var (term i), [] )
-        check = Var (ident checkIdent)
-        node i ( s1, v1, vars1 ) label ( s2, v2, vars2 ) =
-            let
-                player label v1 =
-                    let
-                        playerVar = Var (ident label)
-                    in
-                    if check == playerVar then
-                        Num 0
-                    else
-                        (mult (Var (ident label)) v1)
-                assignment =
-                    term i := add (player label v1) (mult (minus (Num 1) (Var (ident label))) v2)
-            in
-            ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
-    in
-    QOBDD.foldBDD ( [], Num 0, [] ) ( [], Num 1, [] ) ref node
 
 stmtTreeDiff : Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )
 stmtTreeDiff vars checkIdent =
@@ -439,6 +295,51 @@ stmtTreeDiff vars checkIdent =
                         (mult (Num 1) v2)
                 assignment =
                     term i := add (mult (Num 1) v1) (player label v2)
+            in
+            ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
+    in
+    QOBDD.foldBDD ( [], Num 0, [] ) ( [], Num 1, [] ) ref node
+
+stmtTreeAlphaDiff : Dict Int String -> Int -> BDD -> ( List Stmt, Exp, List Int )
+stmtTreeAlphaDiff vars checkIdent =
+    let
+        term i =
+            "alphadiff_t(g, \"" ++ toString checkIdent ++ "\", \"" ++ toString i ++ "\")"
+
+        ident i =
+            case Dict.get i vars of
+                Nothing ->
+                    Debug.crash ("Error: " ++ toString i ++ " not found in " ++ toString vars)
+
+                Just v ->
+                    v
+
+        ref i = ( [], Var (term i), [] )
+
+        check = Var (ident checkIdent)
+
+        node i ( s1, v1, vars1 ) label ( s2, v2, vars2 ) =
+            let
+                lplayer label v1 =
+                    let
+                        playerVar = Var (ident label)
+                    in
+                    if check == playerVar then
+                        (mult (minus (Num 1) check) (mult playerVar v1))
+                    else
+                        (mult playerVar v1)
+
+                rplayer label v2 =
+                    let
+                        playerVar = Var (ident label)
+                    in
+                    if check == playerVar then
+                        (mult (mult (Num -1) check) (mult (minus (Num 1) playerVar) v2))
+                    else
+                        (mult (minus (Num 1) playerVar) v2)
+
+                assignment =
+                    term i := add (lplayer label v1) (rplayer label v2)
             in
             ( s1 ++ s2 ++ [ assignment ], Var (term i), i :: vars1 ++ vars2 )
     in
